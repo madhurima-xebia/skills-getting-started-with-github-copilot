@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  let currentActivities = {};
 
   // Function to fetch activities from API
   function showMessage(text, type = "success") {
@@ -39,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const response = await fetch("/activities");
       const activities = await response.json();
+      currentActivities = activities;
 
       // Clear loading message and dropdown options
       activitiesList.innerHTML = "";
@@ -96,8 +98,19 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value;
+    const email = document.getElementById("email").value.trim();
     const activity = document.getElementById("activity").value;
+
+    if (!email || !activity) {
+      showMessage("Please enter an email and choose an activity.", "error");
+      return;
+    }
+
+    const activityDetails = currentActivities[activity];
+    if (activityDetails && activityDetails.participants.includes(email)) {
+      showMessage("This student is already signed up for the selected activity.", "error");
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -117,9 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showMessage(result.detail || "An error occurred", "error");
       }
     } catch (error) {
-      messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
+      showMessage("Failed to sign up. Please try again.", "error");
       console.error("Error signing up:", error);
     }
   });
