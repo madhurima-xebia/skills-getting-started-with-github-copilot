@@ -5,7 +5,9 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+import re
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 import os
@@ -38,6 +40,42 @@ activities = {
         "schedule": "Mondays, Wednesdays, Fridays, 2:00 PM - 3:00 PM",
         "max_participants": 30,
         "participants": ["john@mergington.edu", "olivia@mergington.edu"]
+    },
+    "Basketball Team": {
+        "description": "Competitive basketball team for intramural and inter-school games",
+        "schedule": "Mondays and Wednesdays, 4:00 PM - 5:30 PM",
+        "max_participants": 15,
+        "participants": ["tyler@mergington.edu"]
+    },
+    "Tennis Club": {
+        "description": "Learn tennis techniques and compete in matches",
+        "schedule": "Saturdays, 10:00 AM - 11:30 AM",
+        "max_participants": 10,
+        "participants": ["rachel@mergington.edu"]
+    },
+    "Art Studio": {
+        "description": "Explore painting, drawing, and mixed media techniques",
+        "schedule": "Wednesdays, 3:30 PM - 5:00 PM",
+        "max_participants": 15,
+        "participants": ["isabella@mergington.edu", "noah@mergington.edu"]
+    },
+    "Music Ensemble": {
+        "description": "Perform in an orchestral ensemble with various instruments",
+        "schedule": "Tuesdays, 4:00 PM - 5:30 PM",
+        "max_participants": 25,
+        "participants": ["aiden@mergington.edu"]
+    },
+    "Debate Team": {
+        "description": "Develop argumentation and public speaking skills through debate competitions",
+        "schedule": "Mondays and Thursdays, 3:30 PM - 5:00 PM",
+        "max_participants": 12,
+        "participants": ["lucas@mergington.edu", "grace@mergington.edu"]
+    },
+    "Math Club": {
+        "description": "Solve challenging math problems and prepare for math competitions",
+        "schedule": "Fridays, 3:30 PM - 4:30 PM",
+        "max_participants": 18,
+        "participants": ["alice@mergington.edu"]
     }
 }
 
@@ -52,16 +90,63 @@ def get_activities():
     return activities
 
 
+EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def normalize_email(email: str) -> str:
+    cleaned = email.strip().lower()
+    if not cleaned or not EMAIL_REGEX.match(cleaned):
+        raise HTTPException(status_code=400, detail="Invalid email address")
+    return cleaned
+
+
+def normalize_participants(participants):
+    normalized = []
+    seen = set()
+    for participant in participants:
+        if not isinstance(participant, str):
+            continue
+        normalized_email = participant.strip().lower()
+        if normalized_email and normalized_email not in seen:
+            seen.add(normalized_email)
+            normalized.append(normalized_email)
+    return normalized
+
+
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: str):
+def signup_for_activity(activity_name: str, email: str = Query(..., description="Student email")):
     """Sign up a student for an activity"""
-    # Validate activity exists
+    validated_email = normalize_email(email)
+
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
 
-    # Get the specific activity
     activity = activities[activity_name]
+    activity["participants"] = normalize_participants(activity["participants"])
 
-    # Add student
-    activity["participants"].append(email)
-    return {"message": f"Signed up {email} for {activity_name}"}
+    if validated_email in activity["participants"]:
+        raise HTTPException(status_code=400, detail="A student with this email is already signed up for the selected activity.")
+
+    if len(activity["participants"]) >= activity["max_participants"]:
+        raise HTTPException(status_code=400, detail="Activity is at full capacity")
+
+    activity["participants"].append(validated_email)
+    return {"message": f"Signed up {validated_email} for {activity_name}"}
+
+
+@app.delete("/activities/{activity_name}/participants")
+def remove_participant(activity_name: str, email: str = Query(..., description="Student email")):
+    """Remove a student from an activity"""
+    validated_email = normalize_email(email)
+
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+
+    activity = activities[activity_name]
+    activity["participants"] = normalize_participants(activity["participants"])
+
+    if validated_email not in activity["participants"]:
+        raise HTTPException(status_code=404, detail="Participant not found")
+
+    activity["participants"].remove(validated_email)
+    return {"message": f"Removed {validated_email} from {activity_name}"}
