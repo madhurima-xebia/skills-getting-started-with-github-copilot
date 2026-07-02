@@ -5,10 +5,11 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
+import re
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
-from pydantic import EmailStr
 import os
 from pathlib import Path
 
@@ -89,33 +90,46 @@ def get_activities():
     return activities
 
 
+EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def validate_email(email: str) -> str:
+    if not email or not EMAIL_REGEX.match(email):
+        raise HTTPException(status_code=400, detail="Invalid email address")
+    return email.strip()
+
+
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: EmailStr = Query(..., description="Student email")):
+def signup_for_activity(activity_name: str, email: str = Query(..., description="Student email")):
     """Sign up a student for an activity"""
+    validated_email = validate_email(email)
+
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
 
     activity = activities[activity_name]
 
-    if email in activity["participants"]:
+    if validated_email in activity["participants"]:
         raise HTTPException(status_code=400, detail="Student is already signed up for this activity")
 
     if len(activity["participants"]) >= activity["max_participants"]:
         raise HTTPException(status_code=400, detail="Activity is at full capacity")
 
-    activity["participants"].append(email)
-    return {"message": f"Signed up {email} for {activity_name}"}
+    activity["participants"].append(validated_email)
+    return {"message": f"Signed up {validated_email} for {activity_name}"}
 
 
 @app.delete("/activities/{activity_name}/participants")
-def remove_participant(activity_name: str, email: EmailStr = Query(..., description="Student email")):
+def remove_participant(activity_name: str, email: str = Query(..., description="Student email")):
     """Remove a student from an activity"""
+    validated_email = validate_email(email)
+
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
 
     activity = activities[activity_name]
-    if email not in activity["participants"]:
+    if validated_email not in activity["participants"]:
         raise HTTPException(status_code=404, detail="Participant not found")
 
-    activity["participants"].remove(email)
-    return {"message": f"Removed {email} from {activity_name}"}
+    activity["participants"].remove(validated_email)
+    return {"message": f"Removed {validated_email} from {activity_name}"}
