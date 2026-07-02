@@ -3,7 +3,6 @@ from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
-
 from src.app import activities, app
 
 client = TestClient(app)
