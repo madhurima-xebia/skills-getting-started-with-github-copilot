@@ -109,9 +109,10 @@ def signup_for_activity(activity_name: str, email: str = Query(..., description=
         raise HTTPException(status_code=404, detail="Activity not found")
 
     activity = activities[activity_name]
+    normalized_participants = {participant.strip().lower() for participant in activity["participants"]}
 
-    if validated_email in activity["participants"]:
-        raise HTTPException(status_code=400, detail="Student is already signed up for this activity")
+    if validated_email in normalized_participants:
+        raise HTTPException(status_code=400, detail="A student with this email is already signed up for the selected activity.")
 
     if len(activity["participants"]) >= activity["max_participants"]:
         raise HTTPException(status_code=400, detail="Activity is at full capacity")
@@ -129,8 +130,14 @@ def remove_participant(activity_name: str, email: str = Query(..., description="
         raise HTTPException(status_code=404, detail="Activity not found")
 
     activity = activities[activity_name]
-    if validated_email not in activity["participants"]:
+    normalized_participants = {participant.strip().lower() for participant in activity["participants"]}
+
+    if validated_email not in normalized_participants:
         raise HTTPException(status_code=404, detail="Participant not found")
 
-    activity["participants"].remove(validated_email)
-    return {"message": f"Removed {validated_email} from {activity_name}"}
+    actual_email = next(
+        participant for participant in activity["participants"]
+        if participant.strip().lower() == validated_email
+    )
+    activity["participants"].remove(actual_email)
+    return {"message": f"Removed {actual_email} from {activity_name}"}
