@@ -2,3 +2,9 @@ fastapi
 uvicorn
 httpx
 watchfiles
+import pytest
+from fastapi.testclient import httpx
+
+# Add your tests here
+def test_example():
+    assert True
