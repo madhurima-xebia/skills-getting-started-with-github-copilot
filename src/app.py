@@ -93,16 +93,17 @@ def get_activities():
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
-def validate_email(email: str) -> str:
-    if not email or not EMAIL_REGEX.match(email):
+def normalize_email(email: str) -> str:
+    cleaned = email.strip().lower()
+    if not cleaned or not EMAIL_REGEX.match(cleaned):
         raise HTTPException(status_code=400, detail="Invalid email address")
-    return email.strip()
+    return cleaned
 
 
 @app.post("/activities/{activity_name}/signup")
 def signup_for_activity(activity_name: str, email: str = Query(..., description="Student email")):
     """Sign up a student for an activity"""
-    validated_email = validate_email(email)
+    validated_email = normalize_email(email)
 
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -122,7 +123,7 @@ def signup_for_activity(activity_name: str, email: str = Query(..., description=
 @app.delete("/activities/{activity_name}/participants")
 def remove_participant(activity_name: str, email: str = Query(..., description="Student email")):
     """Remove a student from an activity"""
-    validated_email = validate_email(email)
+    validated_email = normalize_email(email)
 
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")

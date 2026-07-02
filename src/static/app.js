@@ -106,8 +106,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const normalizedEmail = email.toLowerCase();
     const activityDetails = currentActivities[activity];
-    if (activityDetails && activityDetails.participants.includes(email)) {
+    if (
+      activityDetails &&
+      activityDetails.participants.some((participant) => participant.toLowerCase() === normalizedEmail)
+    ) {
       showMessage("This student is already signed up for the selected activity.", "error");
       return;
     }
@@ -126,8 +130,10 @@ document.addEventListener("DOMContentLoaded", () => {
         showMessage(result.message, "success");
         signupForm.reset();
         await fetchActivities();
+      } else if (result.detail) {
+        showMessage(result.detail, "error");
       } else {
-        showMessage(result.detail || "An error occurred", "error");
+        showMessage("An error occurred while signing up.", "error");
       }
     } catch (error) {
       showMessage("Failed to sign up. Please try again.", "error");
