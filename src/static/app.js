@@ -98,7 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value.trim();
+    const emailElement = document.getElementById("email");
+    const email = emailElement.value.trim();
     const activity = document.getElementById("activity").value;
 
     if (!email || !activity) {
@@ -115,6 +116,9 @@ document.addEventListener("DOMContentLoaded", () => {
       showMessage("This student is already signed up for the selected activity.", "error");
       return;
     }
+
+    const submitButton = signupForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
 
     try {
       const response = await fetch(
@@ -138,6 +142,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       showMessage("Failed to sign up. Please try again.", "error");
       console.error("Error signing up:", error);
+    } finally {
+      submitButton.disabled = false;
     }
   });
 

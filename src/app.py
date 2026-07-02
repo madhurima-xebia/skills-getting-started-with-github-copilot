@@ -87,6 +87,8 @@ def root():
 
 @app.get("/activities")
 def get_activities():
+    for activity in activities.values():
+        activity["participants"] = normalize_participants(activity["participants"])
     return activities
 
 
@@ -100,6 +102,19 @@ def normalize_email(email: str) -> str:
     return cleaned
 
 
+def normalize_participants(participants):
+    normalized = []
+    seen = set()
+    for participant in participants:
+        if not isinstance(participant, str):
+            continue
+        normalized_email = participant.strip().lower()
+        if normalized_email and normalized_email not in seen:
+            seen.add(normalized_email)
+            normalized.append(normalized_email)
+    return normalized
+
+
 @app.post("/activities/{activity_name}/signup")
 def signup_for_activity(activity_name: str, email: str = Query(..., description="Student email")):
     """Sign up a student for an activity"""
@@ -109,9 +124,9 @@ def signup_for_activity(activity_name: str, email: str = Query(..., description=
         raise HTTPException(status_code=404, detail="Activity not found")
 
     activity = activities[activity_name]
-    normalized_participants = {participant.strip().lower() for participant in activity["participants"]}
+    activity["participants"] = normalize_participants(activity["participants"])
 
-    if validated_email in normalized_participants:
+    if validated_email in activity["participants"]:
         raise HTTPException(status_code=400, detail="A student with this email is already signed up for the selected activity.")
 
     if len(activity["participants"]) >= activity["max_participants"]:
@@ -130,14 +145,10 @@ def remove_participant(activity_name: str, email: str = Query(..., description="
         raise HTTPException(status_code=404, detail="Activity not found")
 
     activity = activities[activity_name]
-    normalized_participants = {participant.strip().lower() for participant in activity["participants"]}
+    activity["participants"] = normalize_participants(activity["participants"])
 
-    if validated_email not in normalized_participants:
+    if validated_email not in activity["participants"]:
         raise HTTPException(status_code=404, detail="Participant not found")
 
-    actual_email = next(
-        participant for participant in activity["participants"]
-        if participant.strip().lower() == validated_email
-    )
-    activity["participants"].remove(actual_email)
-    return {"message": f"Removed {actual_email} from {activity_name}"}
+    activity["participants"].remove(validated_email)
+    return {"message": f"Removed {validated_email} from {activity_name}"}
