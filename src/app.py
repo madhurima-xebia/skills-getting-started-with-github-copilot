@@ -87,8 +87,6 @@ def root():
 
 @app.get("/activities")
 def get_activities():
-    for activity in activities.values():
-        activity["participants"] = normalize_participants(activity["participants"])
     return activities
 
 
